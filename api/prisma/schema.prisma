@@ -1,0 +1,66 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String
+  passwordHash String
+  role         Role          @default(USER)
+  /// ISO 4217 code. One currency per account; every amount is shown with it.
+  currency     String        @default("USD") @db.VarChar(3)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  categories   Category[]
+  transactions Transaction[]
+}
+
+model Category {
+  id           String          @id @default(cuid())
+  userId       String
+  name         String
+  type         TransactionType
+  icon         String          @default("shape-outline")
+  color        String          @default("#1F4D3A")
+  createdAt    DateTime        @default(now())
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, name, type])
+  @@index([userId])
+}
+
+model Transaction {
+  id         String          @id @default(cuid())
+  userId     String
+  categoryId String?
+  type       TransactionType
+  amount     Decimal         @db.Decimal(18, 3)
+  currency   String          @db.VarChar(3)
+  note       String          @default("")
+  date       DateTime        @db.Date
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+}
